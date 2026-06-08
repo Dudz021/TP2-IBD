@@ -1,0 +1,13 @@
+# Dependências do projeto Contratos ANATEL
+# Instalação:  pip install -r requirements.txt
+#
+# Bibliotecas-padrão usadas nos notebooks (não precisam de instalação):
+#   pathlib, re, sqlite3, unicodedata
+
+# Manipulação e limpeza de dados
+pandas>=2.2.3
+numpy>=1.26.4
+
+# Execução dos notebooks (.ipynb)
+jupyter>=1.0.0
+ipykernel>=6.29.0
