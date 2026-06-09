@@ -11,3 +11,7 @@ numpy>=1.26.4
 # Execução dos notebooks (.ipynb)
 jupyter>=1.0.0
 ipykernel>=6.29.0
+
+# Aplicação web interativa (streamlit_app/)
+streamlit>=1.36.0
+plotly>=5.22.0

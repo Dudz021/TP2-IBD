@@ -171,3 +171,24 @@ SELECT c.tipo_contrato,
  ORDER BY qtd_versoes DESC
  LIMIT 10;
 ```
+
+---
+
+## Aplicação Streamlit ([`streamlit_app/`](streamlit_app/))
+
+Dashboard web interativo para explorar as **10 consultas** do trabalho sobre o
+`contratos.db`. O app é **genérico**: lê as consultas de um único arquivo de
+definições ([`streamlit_app/queries.py`](streamlit_app/queries.py)) e monta a
+interface sozinho — explicação, SQL, parâmetros interativos, tabela, gráfico,
+análise e download de CSV. Para trocar/editar/adicionar uma consulta, edita-se
+apenas `queries.py`; nada no app precisa mudar.
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app/app.py        # execute a partir da raiz do projeto
+```
+
+Recursos: navegação por categoria, parâmetros interativos (`select`, `slider`,
+`multiselect` — vinculados de forma segura via *named parameters*), gráficos
+Plotly, links compartilháveis (`?p=q09`) e um **Console SQL** somente-leitura.
+Detalhes em [`streamlit_app/README.md`](streamlit_app/README.md).
