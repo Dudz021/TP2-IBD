@@ -1,8 +1,8 @@
 """Dashboard ANATEL — Contratos (TP2 / DCC011).
 
-App Streamlit *genérico*: lê as consultas declaradas em [queries.py](queries.py)
+App Streamlit genérico: lê as consultas declaradas em queries.py
 e renderiza automaticamente explicação, SQL, parâmetros interativos, tabela,
-gráfico, análise e download. Para mudar as consultas, edite apenas `queries.py`.
+gráfico, análise e download. Para mudar as consultas, edite apenas queries.py.
 
 Executar:
     streamlit run streamlit_app/app.py
@@ -23,7 +23,6 @@ import queries as Q
 # --------------------------------------------------------------------------- #
 st.set_page_config(
     page_title="Contratos ANATEL · TP2",
-    page_icon="📡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -66,7 +65,6 @@ st.markdown(
         padding: .85rem 1.1rem; border-radius: 10px; margin:.4rem 0 1rem 0;
       }
       .callout.insight { border-left-color:#16A085; background:#F1FBF8; }
-      .callout b { color:#0A3D62; }
 
       /* Botões do menu lateral */
       section[data-testid="stSidebar"] .stButton button {
@@ -115,10 +113,10 @@ def coletar_parametros(consulta: Q.Consulta) -> dict:
 
 
 def montar_sql(consulta: Q.Consulta, valores: dict) -> tuple[str, tuple]:
-    """Substitui os parâmetros ``:nome`` e devolve (sql, params hasheáveis).
+    """Substitui os parâmetros :nome e devolve (sql, params hasheáveis).
 
-    Vínculo seguro via *named parameters* do SQLite. Listas (multiselect) são
-    expandidas em uma cláusula ``IN (:n_0, :n_1, ...)``.
+    Vínculo seguro via named parameters do SQLite. Listas (multiselect) são
+    expandidas em uma cláusula IN (:n_0, :n_1, ...).
     """
     sql = consulta.sql
     params: dict = {}
@@ -220,11 +218,11 @@ def _ir(pagina: str) -> None:
 
 def sidebar() -> None:
     with st.sidebar:
-        st.markdown("### 📡 Contratos ANATEL")
+        st.markdown("### Contratos ANATEL")
         st.caption("TP2 · Introdução a Banco de Dados (DCC011)")
         st.divider()
 
-        st.button("🏠  Visão geral", on_click=_ir, args=("home",),
+        st.button("Visão geral", on_click=_ir, args=("home",),
                   width="stretch",
                   type="primary" if st.session_state.pagina == "home" else "secondary")
 
@@ -235,13 +233,13 @@ def sidebar() -> None:
             for c in consultas:
                 ativo = st.session_state.pagina == c.id
                 st.button(
-                    f"{c.icone}  {c.numero}. {c.titulo}",
+                    f"{c.numero}. {c.titulo}",
                     on_click=_ir, args=(c.id,), width="stretch",
                     type="primary" if ativo else "secondary",
                 )
 
         st.markdown('<div class="cat-head">Ferramentas</div>', unsafe_allow_html=True)
-        st.button("🛠️  Console SQL", on_click=_ir, args=("console",),
+        st.button("Console SQL", on_click=_ir, args=("console",),
                   width="stretch",
                   type="primary" if st.session_state.pagina == "console" else "secondary")
 
@@ -249,9 +247,9 @@ def sidebar() -> None:
         path = db.caminho_banco()
         if path:
             mb = path.stat().st_size / 1e6
-            st.caption(f"📦 `{path.name}` · {mb:.1f} MB")
+            st.caption(f"{path.name} · {mb:.1f} MB")
         else:
-            st.error("Banco `contratos.db` não encontrado.")
+            st.error("Banco contratos.db não encontrado.")
 
 
 # --------------------------------------------------------------------------- #
@@ -261,7 +259,7 @@ def pagina_home() -> None:
     st.markdown(
         """
         <div class="hero">
-          <h1>📡 Contratos da ANATEL</h1>
+          <h1>Contratos da ANATEL</h1>
           <p>Exploração interativa de quatro famílias de contratos do setor de
           telecomunicações — interconexão, compartilhamento de infraestrutura,
           credenciamento de MVNO e RAN Sharing — modeladas em um banco relacional
@@ -318,25 +316,25 @@ def pagina_home() -> None:
         )
         st.plotly_chart(fig, width="stretch")
 
-    with st.expander("🗺️  Modelo de dados (entidades e relacionamentos)"):
+    with st.expander("Modelo de dados (entidades e relacionamentos)"):
         st.markdown(
             """
-**Entidades principais**
+Entidades principais
 
 | Tabela | Papel |
 |---|---|
-| `contrato` | Contrato único *(tipo + processo ANATEL)*. |
-| `interconexao` / `compartilhamento` / `mvno` / `ran_sharing` | Subtipos 1:1 de `contrato`. |
-| `versao_contrato` | Versões/aditivos de cada contrato. |
-| `participacao` | **Empresa × versão** (papel, ordem, serviço, modalidade, vigência) — relacionamento **M:N**. |
-| `empresa` / `servico` | Dimensões deduplicadas. |
-| `informe` / `acordao` / `despacho` | Documentos SEI por versão. |
+| contrato | Contrato único (tipo + processo ANATEL). |
+| interconexao / compartilhamento / mvno / ran_sharing | Subtipos 1:1 de contrato. |
+| versao_contrato | Versões/aditivos de cada contrato. |
+| participacao | Empresa × versão (papel, ordem, serviço, modalidade, vigência) — relacionamento M:N. |
+| empresa / servico | Dimensões deduplicadas. |
+| informe / acordao / despacho | Documentos SEI por versão. |
 
-**Relacionamentos**
+Relacionamentos
 
-- `contrato` **1:N** `versao_contrato`
-- `versao_contrato` **M:N** `empresa`, materializado pela entidade associativa `participacao`
-- `versao_contrato` **N:1** `informe` / `acordao` / `despacho`
+- contrato 1:N versao_contrato
+- versao_contrato M:N empresa, materializado pela entidade associativa participacao
+- versao_contrato N:1 informe / acordao / despacho
             """
         )
 
@@ -350,7 +348,7 @@ def pagina_home() -> None:
         for col, c in zip(cols, consultas):
             with col:
                 st.button(
-                    f"{c.icone}  {c.numero}. {c.titulo}",
+                    f"{c.numero}. {c.titulo}",
                     key=f"home_{c.id}", on_click=_ir, args=(c.id,),
                     width="stretch",
                 )
@@ -362,13 +360,13 @@ def pagina_consulta(consulta: Q.Consulta) -> None:
         f'<span class="q-num">CONSULTA {consulta.numero:02d}</span> &nbsp; {chip(consulta.categoria)}',
         unsafe_allow_html=True,
     )
-    st.markdown(f'<div class="q-title">{consulta.icone}  {consulta.titulo}</div>',
+    st.markdown(f'<div class="q-title">{consulta.titulo}</div>',
                 unsafe_allow_html=True)
     st.markdown(f'<div class="callout">{consulta.descricao}</div>', unsafe_allow_html=True)
 
     # Parâmetros interativos
     if consulta.parametros:
-        st.markdown("**Parâmetros**")
+        st.markdown("Parâmetros")
         valores = coletar_parametros(consulta)
     else:
         valores = {}
@@ -384,7 +382,7 @@ def pagina_consulta(consulta: Q.Consulta) -> None:
         return
 
     # SQL executado
-    with st.expander("🧩  Ver comando SQL", expanded=False):
+    with st.expander("Ver comando SQL", expanded=False):
         st.code(sql_final, language="sql")
 
     # KPIs
@@ -393,9 +391,9 @@ def pagina_consulta(consulta: Q.Consulta) -> None:
     k2.metric("Colunas", len(df.columns))
 
     # Resultado + gráfico
-    abas = ["📋 Resultado"]
+    abas = ["Resultado"]
     if consulta.grafico and consulta.grafico.tipo:
-        abas.append("📊 Gráfico")
+        abas.append("Gráfico")
     tabs = st.tabs(abas)
 
     with tabs[0]:
@@ -409,7 +407,7 @@ def pagina_consulta(consulta: Q.Consulta) -> None:
                        "baixe o CSV para o conjunto completo."
                        .replace(",", "."))
         st.download_button(
-            "⬇️  Baixar CSV", df.to_csv(index=False).encode("utf-8-sig"),
+            "Baixar CSV", df.to_csv(index=False).encode("utf-8-sig"),
             file_name=f"{consulta.id}.csv", mime="text/csv",
         )
 
@@ -420,15 +418,15 @@ def pagina_consulta(consulta: Q.Consulta) -> None:
     # Análise
     if consulta.analise:
         st.markdown(
-            f'<div class="callout insight"><b>💡 Análise.</b> {consulta.analise}</div>',
+            f'<div class="callout insight">Análise. {consulta.analise}</div>',
             unsafe_allow_html=True,
         )
 
 
 def pagina_console() -> None:
-    st.markdown('<div class="q-title">🛠️  Console SQL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="q-title">Console SQL</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="callout">Execute consultas <b>SELECT</b> livres sobre o banco. '
+        '<div class="callout">Execute consultas SELECT livres sobre o banco. '
         'Útil para explorar o modelo além das 10 consultas. Somente leitura.</div>',
         unsafe_allow_html=True,
     )
@@ -436,13 +434,13 @@ def pagina_console() -> None:
         "Consulta SQL", height=170,
         value="SELECT tipo_contrato, COUNT(*) AS qtd\nFROM contrato\nGROUP BY tipo_contrato\nORDER BY qtd DESC;",
     )
-    if st.button("▶️  Executar", type="primary"):
+    if st.button("Executar", type="primary"):
         limpo = sql.strip().rstrip(";").strip()
         if ";" in limpo:
-            st.error("Execute apenas um comando por vez (sem `;` internos).")
+            st.error("Execute apenas um comando por vez (sem ; internos).")
             return
         if not re.match(r"(?is)^\s*(select|with)\b", limpo):
-            st.error("Apenas consultas `SELECT` (ou `WITH`) são permitidas.")
+            st.error("Apenas consultas SELECT (ou WITH) são permitidas.")
             return
         try:
             df = db.executar(limpo)
@@ -452,7 +450,7 @@ def pagina_console() -> None:
         st.success(f"{len(df):,} linha(s) retornada(s).".replace(",", "."))
         st.dataframe(df.head(2000), width="stretch", hide_index=True, height=460)
         st.download_button(
-            "⬇️  Baixar CSV", df.to_csv(index=False).encode("utf-8-sig"),
+            "Baixar CSV", df.to_csv(index=False).encode("utf-8-sig"),
             file_name="consulta_livre.csv", mime="text/csv",
         )
 
@@ -463,8 +461,8 @@ def pagina_console() -> None:
 def main() -> None:
     if db.caminho_banco() is None:
         st.error(
-            "Não encontrei o banco **`contratos.db`**. Garanta que ele está na "
-            "raiz do projeto (gerado pelo notebook `02 - Prepare Insert.ipynb`)."
+            "Não encontrei o banco contratos.db. Garanta que ele está na "
+            "raiz do projeto (gerado pelo notebook 02 - Prepare Insert.ipynb)."
         )
         return
 

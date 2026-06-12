@@ -1,19 +1,19 @@
-"""Arquivo de consultas — a "fonte da verdade" do dashboard.
+"""Arquivo de consultas — a fonte da verdade do dashboard.
 
-Cada consulta do trabalho é declarada aqui como uma ``Consulta``. O app
-([app.py](app.py)) lê esta lista e renderiza tudo automaticamente: explicação,
+Cada consulta do trabalho é declarada aqui como uma Consulta. O app
+(app.py) lê esta lista e renderiza tudo automaticamente: explicação,
 SQL, parâmetros interativos, tabela de resultados, gráfico, análise e download.
 
->>> Para adicionar / editar / remover uma consulta, mexa SOMENTE neste arquivo.
-    Nada no app precisa ser alterado — ele é genérico.
+Para adicionar / editar / remover uma consulta, mexa SOMENTE neste arquivo.
+Nada no app precisa ser alterado — ele é genérico.
 
 Estrutura de uma consulta
 --------------------------
-- ``sql``        : o comando SQL. Pode conter parâmetros nomeados ``:nome``,
-                   que são vinculados de forma segura (sem injeção).
-- ``parametros`` : widgets interativos que alimentam os ``:nome`` do SQL.
-- ``grafico``    : como visualizar o resultado (tipo, eixos, agregação opcional).
-- ``descricao`` / ``analise`` : textos em Markdown (explicação e leitura crítica).
+- sql        : o comando SQL. Pode conter parâmetros nomeados :nome,
+               que são vinculados de forma segura (sem injeção).
+- parametros : widgets interativos que alimentam os :nome do SQL.
+- grafico    : como visualizar o resultado (tipo, eixos, agregação opcional).
+- descricao / analise : textos (explicação e leitura crítica).
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ CATEGORIAS: dict[str, str] = {
 
 @dataclass
 class Parametro:
-    """Widget interativo que injeta um valor em um ``:nome`` do SQL."""
+    """Widget interativo que injeta um valor em um :nome do SQL."""
 
     nome: str                       # token usado no SQL (ex.: ":tipo" -> nome="tipo")
     rotulo: str                     # rótulo exibido ao usuário
@@ -71,20 +71,11 @@ class Consulta:
     numero: int
     titulo: str
     categoria: str
-    icone: str
     descricao: str
     sql: str
     analise: str = ""
     grafico: Grafico | None = None
     parametros: list[Parametro] = field(default_factory=list)
-
-
-# Opções reutilizadas em vários parâmetros.
-TIPOS_CONTRATO = ["interconexao", "compartilhamento", "mvno", "ran_sharing"]
-PAPEIS = [
-    "PRESTADORA_1", "PRESTADORA_2", "PRESTADORA_3",
-    "SOLICITANTE", "DETENTORA", "PRESTADORA_ORIGEM", "CREDENCIADA",
-]
 
 
 # =========================================================================== #
@@ -98,66 +89,49 @@ CONSULTAS: list[Consulta] = [
     Consulta(
         id="q01",
         numero=1,
-        titulo="Catálogo de contratos por tipo",
+        titulo="Mapeamento de Processos de RAN Sharing",
         categoria="Seleção e Projeção",
-        icone="🗂️",
         descricao=(
-            "Lista os processos ANATEL de um **tipo de contrato** escolhido pelo "
-            "usuário. É o exemplo mais direto de **seleção** (filtro `WHERE` sobre "
-            "o tipo) combinada com **projeção** (apenas `id_processo` e "
-            "`tipo_contrato`), tudo sobre uma única relação."
+            "Realiza a projeção de colunas fundamentais e faz uma seleção para "
+            "isolar estritamente os acordos de compartilhamento de rede de acesso "
+            "via rádio (RAN Sharing)."
         ),
         sql=(
-            "SELECT id_processo, tipo_contrato\n"
+            "SELECT id_contrato, tipo_contrato, id_processo\n"
             "FROM contrato\n"
-            "WHERE tipo_contrato = :tipo\n"
+            "WHERE tipo_contrato = 'ran_sharing'\n"
             "ORDER BY id_processo;"
         ),
-        parametros=[
-            Parametro(
-                nome="tipo", rotulo="Tipo de contrato", tipo="select",
-                opcoes=TIPOS_CONTRATO, padrao="mvno",
-                ajuda="Filtra os contratos pela natureza do acordo.",
-            ),
-        ],
         analise=(
-            "O volume varia muito por tipo: **compartilhamento** (~3,1 mil) e "
-            "**interconexão** (~1,7 mil) dominam, enquanto **RAN Sharing** tem "
-            "apenas 15 contratos — um arranjo ainda incipiente no mercado brasileiro."
+            "O RAN Sharing ainda é um arranjo pouco frequente no país; a seleção "
+            "isola esse subconjunto específico de contratos para inspeção direta."
         ),
-        grafico=None,  # resultado é uma listagem; o destaque é a tabela + KPI
+        grafico=None,
     ),
 
     Consulta(
         id="q02",
         numero=2,
-        titulo="MVNOs descredenciadas",
+        titulo="Rastreamento de Alterações Contratuais Recentes",
         categoria="Seleção e Projeção",
-        icone="📵",
         descricao=(
-            "Seleciona, na tabela de subtipo `mvno`, apenas os credenciamentos que "
-            "**possuem processo de descredenciamento** registrado — ou seja, "
-            "operadoras de rede virtual móvel que deixaram de operar. **Seleção** "
-            "pelo campo não nulo + **projeção** das colunas relevantes."
+            "Seleciona e projeta versões ou aditivos contratuais estabelecidos a "
+            "partir de 2024 que possuem uma data explícita de encerramento da "
+            "vigência acordada."
         ),
         sql=(
-            "SELECT id_contrato, vigencia_data_fim, processo_descredenciamento\n"
-            "FROM mvno\n"
-            "WHERE processo_descredenciamento IS NOT NULL\n"
-            "  AND TRIM(processo_descredenciamento) <> ''\n"
-            "ORDER BY vigencia_data_fim DESC;"
+            "SELECT id_versao, id_contrato, protocolo_data, conclusao_data\n"
+            "FROM versao_contrato\n"
+            "WHERE protocolo_data >= '2024-01-01'\n"
+            "  AND conclusao_data IS NOT NULL\n"
+            "ORDER BY protocolo_data DESC;"
         ),
         analise=(
-            "Dos 245 credenciamentos MVNO, **47 já foram descredenciados**. A "
-            "concentração de encerramentos em anos recentes sugere uma "
-            "reacomodação do mercado de operadoras virtuais após o pico de "
-            "credenciamentos."
+            "Filtrar por data de protocolo recente e exigir data de conclusão "
+            "evidencia os acordos firmados e já encerrados no período mais atual, "
+            "úteis para acompanhar a renovação do estoque contratual."
         ),
-        grafico=Grafico(
-            tipo="bar", x="vigencia_data_fim", x_transform="ano", agg="count",
-            titulo="Descredenciamentos de MVNO por ano",
-            rotulo_x="Ano", rotulo_y="Qtd. de descredenciamentos",
-        ),
+        grafico=None,
     ),
 
     # ----------------------------------------------------------------------- #
@@ -166,109 +140,75 @@ CONSULTAS: list[Consulta] = [
     Consulta(
         id="q03",
         numero=3,
-        titulo="Tecnologias de RAN Sharing",
+        titulo="Junção de Contratos e Histórico de Versões",
         categoria="Junção de duas relações",
-        icone="📡",
         descricao=(
-            "Junta `contrato` com o subtipo `ran_sharing` para mostrar, de cada "
-            "acordo de compartilhamento de rede de acesso, o **processo** e a "
-            "**tecnologia** empregada (MOCN, GWCN, MORAN…). Junção 1:1 entre a "
-            "entidade e seu subtipo."
+            "Realiza uma junção simples (INNER JOIN) entre a tabela mãe de "
+            "contratos e seu histórico de versões para reconstruir a linha do "
+            "tempo dos aditivos administrativos."
         ),
         sql=(
-            "SELECT c.id_processo, r.tecnologia\n"
+            "SELECT c.id_processo, c.tipo_contrato, v.num_sequencia, v.protocolo_data\n"
             "FROM contrato c\n"
-            "JOIN ran_sharing r ON r.id_contrato = c.id_contrato\n"
-            "ORDER BY r.tecnologia, c.id_processo;"
+            "INNER JOIN versao_contrato v ON c.id_contrato = v.id_contrato\n"
+            "ORDER BY c.id_processo, v.num_sequencia;"
         ),
         analise=(
-            "Embora poucos, os acordos de RAN Sharing concentram-se em **MOCN** "
-            "(*Multi-Operator Core Network*), tecnologia que permite a operadoras "
-            "compartilharem a rede de acesso mantendo núcleos independentes — a "
-            "forma mais comum de compartilhamento de rede 4G/5G no país."
+            "A junção entre contrato e versao_contrato reconstrói a linha do tempo "
+            "de cada processo, em que cada versão corresponde a um aditivo ou "
+            "alteração administrativa."
         ),
-        grafico=Grafico(
-            tipo="bar", x="tecnologia", agg="count", ordenar=True,
-            titulo="Contratos de RAN Sharing por tecnologia",
-            rotulo_x="Tecnologia", rotulo_y="Qtd. de contratos",
-        ),
+        grafico=None,
     ),
 
     Consulta(
         id="q04",
         numero=4,
-        titulo="Versões e aditivos por contrato",
+        titulo="Papel Regulatório das Operadoras por Versão",
         categoria="Junção de duas relações",
-        icone="🧾",
         descricao=(
-            "Junta `contrato` com `versao_contrato` para expor o **histórico de "
-            "versões/aditivos** de cada contrato de um tipo escolhido. Cada linha "
-            "do CSV original virou uma versão — esta consulta reconstrói a linha "
-            "do tempo de cada processo."
+            "Conecta a tabela associativa de participações ao cadastro mestre de "
+            "empresas para expor quais razões sociais atuam em cada ID de versão "
+            "contratual."
         ),
         sql=(
-            "SELECT c.id_processo, c.tipo_contrato, v.num_sequencia,\n"
-            "       v.acordo_tipo, v.protocolo_data\n"
-            "FROM contrato c\n"
-            "JOIN versao_contrato v ON v.id_contrato = c.id_contrato\n"
-            "WHERE c.tipo_contrato = :tipo\n"
-            "ORDER BY c.id_processo, v.num_sequencia;"
+            "SELECT p.id_versao, e.razao_social, p.papel\n"
+            "FROM participacao p\n"
+            "INNER JOIN empresa e ON p.id_empresa = e.id_empresa\n"
+            "ORDER BY e.razao_social;"
         ),
-        parametros=[
-            Parametro(
-                nome="tipo", rotulo="Tipo de contrato", tipo="select",
-                opcoes=TIPOS_CONTRATO, padrao="interconexao",
-            ),
-        ],
         analise=(
-            "O número de protocolos cresce de forma acentuada a partir de ~2014, "
-            "refletindo tanto a digitalização do processo (SEI) quanto a "
-            "intensificação dos acordos de interconexão entre prestadoras."
+            "Ligar participacao a empresa revela, versão a versão, qual razão "
+            "social assume cada papel regulatório no contrato."
         ),
         grafico=Grafico(
-            tipo="line", x="protocolo_data", x_transform="ano", agg="count",
-            titulo="Versões protocoladas por ano",
-            rotulo_x="Ano", rotulo_y="Qtd. de versões",
+            tipo="bar", x="papel", agg="count", ordenar=True,
+            titulo="Participações por papel",
+            rotulo_x="Papel", rotulo_y="Qtd. de participações",
         ),
     ),
 
     Consulta(
         id="q05",
         numero=5,
-        titulo="Participações vigentes por papel",
+        titulo="Catálogo de Empresas com Vínculos Contratuais Ativos",
         categoria="Junção de duas relações",
-        icone="✅",
         descricao=(
-            "Junta `participacao` com `empresa` e filtra apenas as participações "
-            "**vigentes** (`vigente = 1`). Permite escolher quais **papéis** "
-            "considerar. Mostra quem está ativo em cada função dos contratos."
+            "Junção entre empresas e participações filtrando operadoras que "
+            "possuem CNPJs válidos e participações homologadas no sistema."
         ),
         sql=(
-            "SELECT e.razao_social, e.cnpj, p.papel\n"
-            "FROM participacao p\n"
-            "JOIN empresa e ON e.id_empresa = p.id_empresa\n"
-            "WHERE p.vigente = 1\n"
-            "  AND p.papel IN :papeis\n"
+            "SELECT DISTINCT e.razao_social, e.cnpj\n"
+            "FROM empresa e\n"
+            "INNER JOIN participacao p ON e.id_empresa = p.id_empresa\n"
+            "WHERE e.cnpj IS NOT NULL\n"
             "ORDER BY e.razao_social;"
         ),
-        parametros=[
-            Parametro(
-                nome="papeis", rotulo="Papéis", tipo="multiselect",
-                opcoes=PAPEIS, padrao=PAPEIS,
-                ajuda="Selecione um ou mais papéis a considerar.",
-            ),
-        ],
         analise=(
-            "Apenas ~10,1 mil das ~44,7 mil participações estão vigentes: a maior "
-            "parte do histórico corresponde a versões superadas por aditivos "
-            "posteriores. Entre as vigentes, os papéis de **prestadora** e "
-            "**solicitante** predominam."
+            "Restringir a CNPJs válidos e participações registradas produz um "
+            "catálogo das operadoras efetivamente ativas no ecossistema."
         ),
-        grafico=Grafico(
-            tipo="bar", x="papel", agg="count", ordenar=True,
-            titulo="Participações vigentes por papel",
-            rotulo_x="Papel", rotulo_y="Qtd. de participações",
-        ),
+        grafico=None,
     ),
 
     # ----------------------------------------------------------------------- #
@@ -277,103 +217,93 @@ CONSULTAS: list[Consulta] = [
     Consulta(
         id="q06",
         numero=6,
-        titulo="Informes SEI vinculados às versões",
+        titulo="Rastreamento Completo de Transações Administrativas",
         categoria="Junção de três ou mais relações",
-        icone="📄",
         descricao=(
-            "Junta **três** relações — `contrato`, `versao_contrato` e `informe` — "
-            "para rastrear, de cada versão de contrato, o **informe SEI** que a "
-            "instruiu e sua data. Demonstra a ligação documento ↔ versão ↔ contrato."
+            "Junção quádrupla unindo contrato, versao_contrato, participacao e "
+            "empresa para recompor a cadeia informacional completa de cada "
+            "processo regulatório."
         ),
         sql=(
-            "SELECT c.id_processo, c.tipo_contrato, v.num_sequencia,\n"
-            "       i.informe_sei, i.informe_data\n"
+            "SELECT c.tipo_contrato, c.id_processo, e.razao_social, p.papel\n"
             "FROM contrato c\n"
-            "JOIN versao_contrato v ON v.id_contrato = c.id_contrato\n"
-            "JOIN informe i ON i.informe_id = v.informe_id\n"
-            "ORDER BY i.informe_data DESC;"
+            "INNER JOIN versao_contrato v ON c.id_contrato = v.id_contrato\n"
+            "INNER JOIN participacao p ON v.id_versao = p.id_versao\n"
+            "INNER JOIN empresa e ON p.id_empresa = e.id_empresa\n"
+            "ORDER BY c.id_processo;"
         ),
         analise=(
-            "Há ~9,4 mil informes vinculados a versões. O fluxo documental se "
-            "intensifica ano a ano, evidenciando o papel central do SEI como "
-            "instrumento de instrução dos processos de contrato na ANATEL."
+            "A junção das quatro relações recompõe a cadeia completa do processo "
+            "— do tipo de contrato à empresa participante — base para as demais "
+            "análises."
         ),
         grafico=Grafico(
-            tipo="area", x="informe_data", x_transform="ano", agg="count",
-            titulo="Informes SEI por ano",
-            rotulo_x="Ano", rotulo_y="Qtd. de informes",
+            tipo="bar", x="tipo_contrato", agg="count", ordenar=True,
+            titulo="Participações por tipo de contrato",
+            rotulo_x="Tipo de contrato", rotulo_y="Qtd. de participações",
         ),
     ),
 
     Consulta(
         id="q07",
         numero=7,
-        titulo="Participações por serviço e modalidade",
+        titulo="Análise Espacial do Mercado de MVNOs",
         categoria="Junção de três ou mais relações",
-        icone="🔀",
         descricao=(
-            "Junta **três** relações — `participacao`, `empresa` e `servico` — "
-            "cruzando empresas, o **serviço ANATEL** associado e a **modalidade "
-            "STFC** (Local, LDN, LDI). Mostra como as prestadoras se distribuem "
-            "entre serviços e modalidades de telefonia."
+            "Cruza quatro tabelas aplicando uma restrição na relação primária "
+            "para mapear exclusivamente os atores envolvidos nos acordos de "
+            "operadoras móveis virtuais."
         ),
         sql=(
-            "SELECT e.razao_social, s.servico_tipo, p.papel, p.modalidade_sftc\n"
-            "FROM participacao p\n"
-            "JOIN empresa e ON e.id_empresa = p.id_empresa\n"
-            "JOIN servico s ON s.servico_id = p.servico_id\n"
-            "WHERE p.modalidade_sftc IS NOT NULL\n"
-            "  AND TRIM(p.modalidade_sftc) <> ''\n"
-            "ORDER BY e.razao_social;"
+            "SELECT c.id_processo, v.protocolo_data, e.razao_social, p.papel\n"
+            "FROM contrato c\n"
+            "INNER JOIN versao_contrato v ON c.id_contrato = v.id_contrato\n"
+            "INNER JOIN participacao p ON v.id_versao = p.id_versao\n"
+            "INNER JOIN empresa e ON p.id_empresa = e.id_empresa\n"
+            "WHERE c.tipo_contrato = 'mvno'\n"
+            "ORDER BY c.id_processo;"
         ),
         analise=(
-            "As modalidades **Local**, **LDN** (longa distância nacional) e **LDI** "
-            "(internacional) aparecem em volumes próximos, indicando que boa parte "
-            "das prestadoras atua simultaneamente nas três frentes de telefonia fixa."
+            "Ao restringir o tipo de contrato a mvno, a mesma junção de quatro "
+            "tabelas isola os atores e papéis específicos do mercado de operadoras "
+            "móveis virtuais."
         ),
         grafico=Grafico(
-            tipo="bar", x="modalidade_sftc", agg="count", ordenar=True,
-            titulo="Participações por modalidade STFC",
-            rotulo_x="Modalidade STFC", rotulo_y="Qtd. de participações",
+            tipo="bar", x="papel", agg="count", ordenar=True,
+            titulo="Papéis nos contratos de MVNO",
+            rotulo_x="Papel", rotulo_y="Qtd. de participações",
         ),
     ),
 
     Consulta(
         id="q08",
         numero=8,
-        titulo="Pares de prestadoras em interconexão",
+        titulo="Auditoria de Propriedade de Infraestrutura Passiva",
         categoria="Junção de três ou mais relações",
-        icone="🔗",
         descricao=(
-            "Consulta avançada com **auto-junção**: cruza `contrato`, "
-            "`versao_contrato`, `participacao` (duas vezes — Prestadora 1 e "
-            "Prestadora 2) e `empresa` (duas vezes) para revelar **quem se "
-            "interconecta com quem**. Cada linha é um acordo entre duas operadoras."
+            "Identifica quais corporações atuam especificamente no papel de "
+            "DETENTORA de ativos físicos (torres, postes e dutos) em contratos de "
+            "compartilhamento."
         ),
         sql=(
-            "SELECT c.id_processo,\n"
-            "       e1.razao_social AS prestadora_1,\n"
-            "       e2.razao_social AS prestadora_2,\n"
-            "       v.protocolo_data\n"
+            "SELECT c.id_processo, v.protocolo_data, e.razao_social AS empresa_detentora\n"
             "FROM contrato c\n"
-            "JOIN versao_contrato v ON v.id_contrato = c.id_contrato\n"
-            "JOIN participacao p1 ON p1.id_versao = v.id_versao AND p1.papel = 'PRESTADORA_1'\n"
-            "JOIN empresa e1 ON e1.id_empresa = p1.id_empresa\n"
-            "JOIN participacao p2 ON p2.id_versao = v.id_versao AND p2.papel = 'PRESTADORA_2'\n"
-            "JOIN empresa e2 ON e2.id_empresa = p2.id_empresa\n"
-            "WHERE c.tipo_contrato = 'interconexao'\n"
+            "INNER JOIN versao_contrato v ON c.id_contrato = v.id_contrato\n"
+            "INNER JOIN participacao p ON v.id_versao = p.id_versao\n"
+            "INNER JOIN empresa e ON p.id_empresa = e.id_empresa\n"
+            "WHERE c.tipo_contrato = 'compartilhamento'\n"
+            "  AND p.papel = 'DETENTORA'\n"
             "ORDER BY c.id_processo;"
         ),
         analise=(
-            "As grandes operadoras (TIM, Oi, Claro, Vivo) concentram o papel de "
-            "**Prestadora 1**, atuando como hubs de interconexão para uma longa "
-            "cauda de provedores regionais — um retrato claro da assimetria de "
-            "porte no mercado de telecom."
+            "Filtrar pelo papel DETENTORA em contratos de compartilhamento "
+            "identifica as empresas proprietárias da infraestrutura passiva "
+            "(torres, postes e dutos)."
         ),
         grafico=Grafico(
-            tipo="bar", x="prestadora_1", agg="count", ordenar=True, topn=12,
-            titulo="Operadoras com mais acordos de interconexão (como Prestadora 1)",
-            rotulo_x="Prestadora 1", rotulo_y="Qtd. de acordos",
+            tipo="barh", x="empresa_detentora", agg="count", ordenar=True, topn=12,
+            titulo="Detentoras de infraestrutura passiva",
+            rotulo_x="Qtd. de participações", rotulo_y="Empresa",
         ),
     ),
 
@@ -383,91 +313,87 @@ CONSULTAS: list[Consulta] = [
     Consulta(
         id="q09",
         numero=9,
-        titulo="Ranking de empresas mais ativas",
+        titulo="Análise de Volatilidade Contratual por Processo",
         categoria="Agregação sobre junção",
-        icone="🏆",
         descricao=(
-            "**Agregação** (`COUNT`, `COUNT DISTINCT`) sobre a junção de "
-            "`participacao`, `versao_contrato` e `empresa`, agrupando por empresa. "
-            "Ranqueia as operadoras por **nº de contratos distintos** em que "
-            "aparecem e pelo **total de participações** (somando todas as "
-            "versões/aditivos). Use o controle para definir o tamanho do ranking."
+            "Agrupa dados de junção e computa a função agregada COUNT para mapear "
+            "os contratos que sofreram maior volume de aditivos e reajustes "
+            "históricos. Use o controle para definir o tamanho do ranking."
         ),
         sql=(
-            "SELECT e.razao_social,\n"
-            "       COUNT(DISTINCT v.id_contrato) AS contratos,\n"
-            "       COUNT(*) AS participacoes\n"
-            "FROM participacao p\n"
-            "JOIN versao_contrato v ON v.id_versao = p.id_versao\n"
-            "JOIN empresa e ON e.id_empresa = p.id_empresa\n"
-            "GROUP BY e.id_empresa\n"
-            "ORDER BY participacoes DESC\n"
+            "SELECT c.id_processo, c.tipo_contrato, COUNT(v.id_versao) AS total_versoes\n"
+            "FROM contrato c\n"
+            "INNER JOIN versao_contrato v ON c.id_contrato = v.id_contrato\n"
+            "GROUP BY c.id_contrato\n"
+            "ORDER BY total_versoes DESC\n"
             "LIMIT :n;"
         ),
         parametros=[
             Parametro(
                 nome="n", rotulo="Tamanho do ranking", tipo="slider",
-                minimo=5, maximo=30, padrao=15, passo=1,
+                minimo=5, maximo=30, padrao=10, passo=1,
             ),
         ],
         analise=(
-            "Um punhado de grandes grupos responde por uma fração desproporcional "
-            "de todas as participações — comportamento típico de **cauda longa**, "
-            "em que poucas operadoras nacionais firmam a maioria dos acordos e "
-            "milhares de provedores menores aparecem poucas vezes cada."
+            "Contar versões por processo destaca os contratos mais voláteis — "
+            "aqueles que acumularam mais aditivos e alterações ao longo do tempo."
         ),
         grafico=Grafico(
-            tipo="barh", x="razao_social", y="participacoes", ordenar=True,
-            titulo="Empresas por número de participações",
-            rotulo_x="Qtd. de participações", rotulo_y="Empresa",
+            tipo="barh", x="id_processo", y="total_versoes", ordenar=True,
+            titulo="Processos com mais versões / aditivos",
+            rotulo_x="Qtd. de versões", rotulo_y="Processo",
         ),
     ),
 
     Consulta(
         id="q10",
         numero=10,
-        titulo="Evolução dos contratos por tipo",
+        titulo="Índice de Concentração de Mercado em Compartilhamento Passivo",
         categoria="Agregação sobre junção",
-        icone="📈",
         descricao=(
-            "**Agregação temporal** sobre a junção de `contrato` e "
-            "`versao_contrato`: conta versões protocoladas por **ano** e por "
-            "**tipo de contrato**. Revela a dinâmica histórica de cada modalidade "
-            "de acordo ao longo de quase duas décadas (2006–2025)."
+            "Executa um agrupamento por empresa e calcula o volume total de "
+            "participações contratuais na modalidade de compartilhamento de "
+            "infraestrutura, expondo os principais players do setor. Use o "
+            "controle para definir o tamanho do ranking."
         ),
         sql=(
-            "SELECT strftime('%Y', v.protocolo_data) AS ano,\n"
-            "       c.tipo_contrato,\n"
-            "       COUNT(*) AS qtd\n"
-            "FROM contrato c\n"
-            "JOIN versao_contrato v ON v.id_contrato = c.id_contrato\n"
-            "WHERE v.protocolo_data IS NOT NULL\n"
-            "  AND v.protocolo_data <> ''\n"
-            "GROUP BY ano, c.tipo_contrato\n"
-            "ORDER BY ano, c.tipo_contrato;"
+            "SELECT e.razao_social AS empresa, COUNT(p.id_participacao) AS total_participacoes\n"
+            "FROM empresa e\n"
+            "INNER JOIN participacao p ON e.id_empresa = p.id_empresa\n"
+            "INNER JOIN versao_contrato v ON p.id_versao = v.id_versao\n"
+            "INNER JOIN contrato c ON v.id_contrato = c.id_contrato\n"
+            "WHERE c.tipo_contrato = 'compartilhamento'\n"
+            "GROUP BY e.id_empresa\n"
+            "ORDER BY total_participacoes DESC\n"
+            "LIMIT :n;"
         ),
+        parametros=[
+            Parametro(
+                nome="n", rotulo="Tamanho do ranking", tipo="slider",
+                minimo=5, maximo=30, padrao=10, passo=1,
+            ),
+        ],
         analise=(
-            "**Interconexão** e **compartilhamento** disparam a partir de meados "
-            "da década de 2010; **MVNO** surge mais tarde, acompanhando a "
-            "regulamentação das operadoras virtuais. A inflexão recente coincide "
-            "com a adoção plena do SEI e com a expansão do 4G/5G."
+            "Somar participações por empresa nos contratos de compartilhamento "
+            "expõe a concentração de mercado, com poucos grupos respondendo pela "
+            "maior parte dos vínculos."
         ),
         grafico=Grafico(
-            tipo="area", x="ano", y="qtd", cor="tipo_contrato",
-            titulo="Versões protocoladas por ano e tipo de contrato",
-            rotulo_x="Ano", rotulo_y="Qtd. de versões",
+            tipo="barh", x="empresa", y="total_participacoes", ordenar=True,
+            titulo="Empresas por participações em compartilhamento",
+            rotulo_x="Qtd. de participações", rotulo_y="Empresa",
         ),
     ),
 ]
 
 
 def por_id(consulta_id: str) -> Consulta | None:
-    """Retorna a consulta de dado ``id`` (ou ``None``)."""
+    """Retorna a consulta de dado id (ou None)."""
     return next((c for c in CONSULTAS if c.id == consulta_id), None)
 
 
 def por_categoria() -> dict[str, list[Consulta]]:
-    """Agrupa as consultas por categoria, preservando a ordem de ``CATEGORIAS``."""
+    """Agrupa as consultas por categoria, preservando a ordem de CATEGORIAS."""
     grupos: dict[str, list[Consulta]] = {cat: [] for cat in CATEGORIAS}
     for consulta in CONSULTAS:
         grupos.setdefault(consulta.categoria, []).append(consulta)
